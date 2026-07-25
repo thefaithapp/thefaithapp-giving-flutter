@@ -10,7 +10,7 @@
 *.iws
 build/
 coverage/
-doc/api/
+doc/
 example/.dart_tool/
 example/.flutter-plugins-dependencies
 example/build/
