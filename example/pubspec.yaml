@@ -1,0 +1,18 @@
+name: thefaithapp_giving_example
+publish_to: none
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  thefaithapp_auth: ^0.1.0
+  thefaithapp_giving:
+    path: ../
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

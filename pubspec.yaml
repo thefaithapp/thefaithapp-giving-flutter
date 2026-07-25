@@ -1,0 +1,23 @@
+name: thefaithapp_giving
+description: Authenticated, provider-extensible giving views for TheFaithApp Flutter applications.
+version: 0.1.0
+homepage: https://thefaithapp.com
+repository: https://github.com/thefaithapp/thefaithapp-giving-flutter
+issue_tracker: https://github.com/thefaithapp/thefaithapp-giving-flutter/issues
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+  flutter: '>=3.38.1'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_stripe: ^13.1.0
+  http: ^1.6.0
+  thefaithapp_auth: ^0.1.0
+  webview_flutter: ^4.14.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

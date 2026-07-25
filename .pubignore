@@ -1,0 +1,17 @@
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.github/
+.idea/
+.swiftpm/
+.vscode/
+*.iml
+*.ipr
+*.iws
+build/
+coverage/
+doc/api/
+example/.dart_tool/
+example/.flutter-plugins-dependencies
+example/build/
+pubspec.lock
