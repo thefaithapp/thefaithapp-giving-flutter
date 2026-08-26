@@ -18,3 +18,5 @@
   cash-gift checkouts.
 - Reject checkout sessions and extension-handler results whose provider or
   donation identity does not match the active checkout.
+- Complete seller-scoped PayPal Partner Subscription approvals for recurring
+  general and campaign gifts.

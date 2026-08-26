@@ -306,6 +306,7 @@ final class GivingCheckoutSession {
     this.paypalOrderId,
     this.paypalFlow,
     this.paypalTokenId,
+    this.paypalSubscriptionId,
     this.flutterwaveChargeId,
     this.transactionReference,
     this.amount,
@@ -328,6 +329,7 @@ final class GivingCheckoutSession {
       paypalOrderId: json['paypal_order_id'] as String?,
       paypalFlow: json['paypal_flow'] as String?,
       paypalTokenId: json['paypal_token_id'] as String?,
+      paypalSubscriptionId: json['paypal_subscription_id'] as String?,
       flutterwaveChargeId: json['fw_charge_id'] as String?,
       transactionReference: json['tx_ref'] as String?,
       amount: _nullableDouble(json['amount']),
@@ -349,6 +351,7 @@ final class GivingCheckoutSession {
   final String? paypalOrderId;
   final String? paypalFlow;
   final String? paypalTokenId;
+  final String? paypalSubscriptionId;
   final String? flutterwaveChargeId;
   final String? transactionReference;
   final double? amount;

@@ -165,6 +165,8 @@ final class AuthenticatedGivingApi implements GivingApi {
         'paypal_order_id': session.paypalOrderId,
       if (session.paypalTokenId != null)
         'paypal_token_id': session.paypalTokenId,
+      if (session.paypalSubscriptionId != null)
+        'paypal_subscription_id': session.paypalSubscriptionId,
     });
   }
 
