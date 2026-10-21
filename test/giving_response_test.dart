@@ -118,7 +118,7 @@ void main() {
     'real API key 401 and misleading plan fields still mean not authenticated',
     () {
       for (final payload in [
-        {'success': false, 'error_message': 'Invalid API key.'},
+        {'error_message': 'Unauthorized - Invalid API key'},
         planDenial,
       ]) {
         final error = rejection(payload, 401);
