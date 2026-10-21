@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:thefaithapp_auth/thefaithapp_auth.dart';
 
 import 'exceptions.dart';
+import 'giving_response.dart';
 import 'models.dart';
 
 /// Network boundary used by the SDK. Production instances are always backed
@@ -190,7 +191,7 @@ final class AuthenticatedGivingApi implements GivingApi {
   Future<Map<String, dynamic>> _getData(String path) async {
     await _requireSession();
     final response = await _client.get(_auth.apiUri(path));
-    return _dataFromResponse(response);
+    return decodeGivingResponse(response);
   }
 
   Future<Map<String, dynamic>> _postData(
@@ -203,7 +204,7 @@ final class AuthenticatedGivingApi implements GivingApi {
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
-    return _dataFromResponse(response);
+    return decodeGivingResponse(response);
   }
 
   Future<void> _requireSession() async {
@@ -214,54 +215,6 @@ final class AuthenticatedGivingApi implements GivingApi {
         'Sign in before making a gift.',
       );
     }
-  }
-
-  Map<String, dynamic> _dataFromResponse(http.Response response) {
-    Object? decoded;
-    try {
-      decoded = jsonDecode(response.body);
-    } on FormatException {
-      throw GivingException(
-        GivingErrorCode.malformedResponse,
-        'The giving service returned an invalid response.',
-        statusCode: response.statusCode,
-      );
-    }
-
-    if (decoded is! Map) {
-      throw GivingException(
-        GivingErrorCode.malformedResponse,
-        'The giving service returned an invalid response.',
-        statusCode: response.statusCode,
-      );
-    }
-    final payload = Map<String, dynamic>.from(decoded);
-    final succeeded = response.statusCode >= 200 && response.statusCode < 300;
-    if (!succeeded) {
-      final message = payload['message'];
-      throw GivingException(
-        response.statusCode == 401 || response.statusCode == 403
-            ? GivingErrorCode.notAuthenticated
-            : response.statusCode == 422
-            ? GivingErrorCode.invalidRequest
-            : GivingErrorCode.server,
-        message is String && message.isNotEmpty
-            ? message
-            : 'The giving request could not be completed.',
-        statusCode: response.statusCode,
-      );
-    }
-
-    final data = payload['data'];
-    if (data is List) {
-      return <String, dynamic>{'items': data};
-    }
-    if (data is Map) return Map<String, dynamic>.from(data);
-    throw GivingException(
-      GivingErrorCode.malformedResponse,
-      'The giving service returned an invalid response.',
-      statusCode: response.statusCode,
-    );
   }
 
   @override

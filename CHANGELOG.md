@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Distinguish expired sign-in, plan-access denial and other forbidden requests.
+- Expose allowlisted server error and plan identifiers without retaining raw
+  response data. Add the new error categories to exhaustive error handlers.
+
 ## 0.1.0
 
 - Add authenticated general and campaign giving views.
