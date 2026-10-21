@@ -1,0 +1,12 @@
+{
+  "success": false,
+  "error_code": "plan_product_unavailable",
+  "message": "Platform Integrations is not included in your current plan. Upgrade to Large to use it.",
+  "plan_access": {
+    "type": "product",
+    "product": "platform_integrations",
+    "current_plan": "free",
+    "recommended_plan": "large",
+    "message": "Platform Integrations is not included in your current plan. Upgrade to Large to use it."
+  }
+}
