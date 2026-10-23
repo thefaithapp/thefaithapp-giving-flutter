@@ -19,7 +19,7 @@ payment method to be added without duplicating the general and campaign forms.
 ```yaml
 dependencies:
   thefaithapp_auth: ^0.1.0
-  thefaithapp_giving: ^0.1.0
+  thefaithapp_giving: ^0.2.0
 ```
 
 Follow the native setup required by `flutter_stripe` and
@@ -43,9 +43,8 @@ campaign, checkout, capture, verification, and status request to that identity.
 
 ## Handle access failures
 
-The expanded error categories and fields below are an **unreleased repository
-update**. They are not yet a new pub.dev release; the package version remains
-unchanged in this change.
+The error categories and fields below apply to **0.2.0**. For the migration
+from 0.1.0, see [Upgrading from 0.1.0](#upgrading-from-010).
 
 A valid sign-in does not guarantee that the church's plan includes SDK access.
 Handle `GivingException.code` according to the failure:
@@ -67,6 +66,37 @@ are retained in these fields.
 When updating to this change, add the new cases to exhaustive
 `GivingErrorCode` switches. The built-in view reports the error through
 `onError` and displays its message; it does not sign the member out.
+
+## Upgrading from 0.1.0
+
+Update the giving constraint to `^0.2.0`; the auth dependency stays on
+`^0.1.0`. A decoded API error with HTTP 403 was previously reported as `notAuthenticated`. In 0.2.0,
+recognized plan denials are `planAccessDenied` and other decoded HTTP 403 errors are
+`forbidden`. Add both cases to exhaustive switches, and keep sign-in recovery
+for missing sessions and HTTP 401.
+
+```dart
+void handleGivingError(GivingException error) {
+  switch (error.code) {
+    case GivingErrorCode.notAuthenticated:
+      // Offer the app's sign-in recovery path.
+      break;
+    case GivingErrorCode.planAccessDenied:
+      // Ask the church administrator to review plan access.
+      break;
+    case GivingErrorCode.forbidden:
+      // Check permission for this resource or action.
+      break;
+    default:
+      // Keep handling the other giving errors.
+      break;
+  }
+}
+```
+
+The new `serverErrorCode` and `planAccess` fields are optional.
+`GivingCheckoutSession.paypalSubscriptionId` is also nullable and is populated
+when the checkout response supplies a PayPal subscription ID.
 
 ## General giving
 

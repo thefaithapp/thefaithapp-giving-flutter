@@ -1,10 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Distinguish expired sign-in, plan-access denial and other forbidden requests.
 - Expose allowlisted server error and plan identifiers without retaining raw
   response data. Add the new error categories to exhaustive error handlers.
+- Decoded API errors with HTTP 403 no longer map to `notAuthenticated`: recognized plan denials use
+  `planAccessDenied`, and other permission denials use `forbidden`. Keep sign-in
+  recovery for missing sessions and HTTP 401.
+- Expose `GivingCheckoutSession.paypalSubscriptionId` for PayPal recurring
+  checkout responses.
+
+### Migration from 0.1.0
+
+- Update the giving dependency to `^0.2.0`.
+- Add `GivingErrorCode.planAccessDenied` and `GivingErrorCode.forbidden` to
+  exhaustive switches. Signing in again does not resolve a plan denial.
+- Treat `serverErrorCode`, `planAccess` and the PayPal subscription ID as optional;
+  do not assume every error or provider response includes them.
 
 ## 0.1.0
 
