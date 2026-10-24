@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Show recurring choices only when the server enables them; otherwise submit one-time gifts.
+- Reject payment status responses for a different donation or provider.
+- Load giving configuration and fund or campaign details concurrently.
+- Keep fund, currency, and frequency selectors within narrow phone screens.
+- Label the hosted checkout close button for assistive technology.
+
 ## 0.2.0
 
 - Distinguish expired sign-in, plan-access denial and other forbidden requests.

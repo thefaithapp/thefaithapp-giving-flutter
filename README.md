@@ -25,6 +25,29 @@ dependencies:
 Follow the native setup required by `flutter_stripe` and
 `webview_flutter` for the platforms your application supports.
 
+For Android, the host app needs the Internet permission in its main manifest,
+`FlutterFragmentActivity` for `MainActivity`, and an AppCompat-compatible launch
+and normal theme (for example `Theme.MaterialComponents.DayNight.NoActionBar`).
+Follow [Flutter Stripe's Android and release setup](https://github.com/flutter-stripe/flutter_stripe#android),
+including its ProGuard configuration, then perform a full native rebuild.
+These host requirements also apply when using the giving package's built-in
+PaymentSheet handler. Use HTTPS for API and hosted checkout traffic.
+
+If Stripe 13.x cannot resolve the optional `play-services-tapandpay` dependency
+and your host app does not use Stripe Issuing, exclude that restricted optional
+artifact in `android/build.gradle.kts`:
+
+```kotlin
+subprojects {
+    configurations.configureEach {
+        exclude(group = "com.google.android.gms", module = "play-services-tapandpay")
+    }
+}
+```
+
+Keep Stripe's release ProGuard rules. Apps that use card issuing should follow
+Stripe's issuing access and setup requirements instead of this exclusion.
+
 ## Authenticate first
 
 Giving requires a valid member session from `thefaithapp_auth`:
@@ -136,6 +159,9 @@ same data through `CampaignGivingRequest.formFields`.
 Both views intentionally use the church's active/default method. Payment
 methods have different account, currency, recurrence, and presentation rules,
 so the platform owns method selection and configuration.
+
+The built-in forms show recurring choices only when the API configuration
+explicitly enables recurring giving. Otherwise, they submit one-time gifts.
 
 ## Manage recurring gifts
 

@@ -203,6 +203,7 @@ final class _HostedGivingPageState extends State<_HostedGivingPage> {
       title: Text(widget.title),
       leading: IconButton(
         icon: const Icon(Icons.close),
+        tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
         onPressed: () =>
             Navigator.of(context).pop(GivingPaymentState.cancelled),
       ),

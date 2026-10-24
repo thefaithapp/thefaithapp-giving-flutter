@@ -15,3 +15,13 @@ example/.dart_tool/
 example/.flutter-plugins-dependencies
 example/build/
 pubspec.lock
+
+# Local test configuration must never enter a public package.
+pubspec_overrides.yaml
+example/pubspec_overrides.yaml
+.env
+.env.*
+.codex/
+.claude/
+*.local.*
+node_modules/
