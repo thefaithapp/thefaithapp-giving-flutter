@@ -168,8 +168,8 @@ final class TheFaithAppGiving {
           session: session,
           target: target,
           apiOrigin: _api.apiOrigin,
-          waitForStatus: () => _waitForStatus(target, session.donationId),
-          getStatus: () => _api.getStatus(target, session.donationId),
+          waitForStatus: () => _waitForStatus(target, session),
+          getStatus: () => _getStatus(target, session),
           capturePayPal: () => _api.capturePayPal(target, session),
           verifyFlutterwave: (transactionId) =>
               _api.verifyFlutterwave(target, session, transactionId),
@@ -233,16 +233,31 @@ final class TheFaithAppGiving {
 
   Future<GivingPaymentStatus> _waitForStatus(
     GivingTarget target,
-    int donationId,
+    GivingCheckoutSession session,
   ) async {
     late GivingPaymentStatus status;
     for (var attempt = 0; attempt < maxStatusPollAttempts; attempt++) {
-      status = await _api.getStatus(target, donationId);
+      status = await _getStatus(target, session);
       if (status.state != GivingPaymentState.pending) return status;
       if (attempt + 1 < maxStatusPollAttempts &&
           statusPollInterval > Duration.zero) {
         await Future<void>.delayed(statusPollInterval);
       }
+    }
+    return status;
+  }
+
+  Future<GivingPaymentStatus> _getStatus(
+    GivingTarget target,
+    GivingCheckoutSession session,
+  ) async {
+    final status = await _api.getStatus(target, session.donationId);
+    if (status.donationId != session.donationId ||
+        (status.provider != session.provider && status.provider != 'unknown')) {
+      throw const GivingException(
+        GivingErrorCode.malformedResponse,
+        'The giving service returned a status for a different checkout.',
+      );
     }
     return status;
   }

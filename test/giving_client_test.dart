@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' as stripe;
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,56 @@ import 'package:thefaithapp_giving/src/payment/stripe_payment_handler.dart';
 import 'package:thefaithapp_giving/thefaithapp_giving.dart';
 
 void main() {
+  for (final permission in [null, false, true, 'true', 1]) {
+    test(
+      'recurring giving requires explicit server permission: $permission',
+      () {
+        expect(
+          GivingConfig.fromJson({
+            'recurring_giving_enabled': permission,
+          }).recurringGivingEnabled,
+          permission == true,
+        );
+      },
+    );
+  }
+
+  for (final campaign in [false, true]) {
+    testWidgets('disabled recurring choices are hidden: campaign=$campaign', (
+      tester,
+    ) async {
+      final api = _FakeGivingApi(recurringGivingEnabled: false);
+      final giving = TheFaithAppGiving.testing(
+        api: api,
+        paymentHandlers: const [_TestPaymentHandler()],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: campaign
+                ? GivingView.campaign(giving: giving, campaignId: 42)
+                : GivingView.general(giving: giving),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Frequency'), findsNothing);
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Amount'),
+        '10',
+      );
+      await tester.ensureVisible(find.text('Continue'));
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(
+        campaign
+            ? api.campaignRequest?.frequency
+            : api.generalRequest?.frequency,
+        GivingFrequency.oneTime,
+      );
+    });
+  }
+
   test('hosted callbacks require exact HTTPS origin, path and donation', () {
     final origin = Uri.parse('https://api.thefaithapp.com');
     const paths = {'/paypal/giving/success'};
@@ -344,6 +396,61 @@ void main() {
       expect(pendingApi.statusCalls, 2);
     },
   );
+
+  for (final scenario in [
+    (donationId: 999, provider: 'testpay'),
+    (donationId: 101, provider: 'paypal'),
+  ]) {
+    testWidgets('rejects status for another checkout $scenario', (
+      tester,
+    ) async {
+      final context = await _pumpContext(tester);
+      final api = _FakeGivingApi(
+        statusDonationId: scenario.donationId,
+        statusProvider: scenario.provider,
+      );
+      final giving = TheFaithAppGiving.testing(
+        api: api,
+        paymentHandlers: const [_TestPaymentHandler()],
+      );
+      await expectLater(
+        giving.give(
+          context,
+          const GeneralGivingRequest(
+            allocations: [GivingAllocation(amount: 10)],
+            currency: 'USD',
+          ),
+        ),
+        throwsA(
+          isA<GivingException>().having(
+            (error) => error.code,
+            'code',
+            GivingErrorCode.malformedResponse,
+          ),
+        ),
+      );
+      expect(api.statusCalls, 1);
+      expect(api.abandonedDonationIds, [101]);
+    });
+  }
+
+  testWidgets('loads funds while giving configuration is still pending', (
+    tester,
+  ) async {
+    final configReady = Completer<void>();
+    final api = _FakeGivingApi(configReady: configReady);
+    final giving = TheFaithAppGiving.testing(api: api);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: GivingView.general(giving: giving)),
+      ),
+    );
+    expect(api.fundsCalls, 1);
+    expect(find.text('Continue'), findsNothing);
+    configReady.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('Continue'), findsOneWidget);
+  });
 
   testWidgets('custom handlers can replace a built-in provider', (
     tester,
@@ -886,6 +993,33 @@ void main() {
     expect(find.byTooltip('Remove'), findsNothing);
   });
 
+  testWidgets('giving selectors fit on a narrow phone with long fund names', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final giving = TheFaithAppGiving.testing(
+      api: _FakeGivingApi(
+        funds: const [
+          GivingFund(
+            id: 7,
+            name: 'Church building and community outreach fund',
+          ),
+        ],
+      ),
+      paymentHandlers: const [_TestPaymentHandler()],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: GivingView.general(giving: giving)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Continue'), findsOneWidget);
+  });
+
   testWidgets('prayer-room view hides recurring and memo controls', (
     tester,
   ) async {
@@ -1015,12 +1149,16 @@ final class _FakeGivingApi implements GivingApi {
     this.defaultProvider = 'testpay',
     this.availableProviders = const ['testpay'],
     this.coverFeesEnabled = true,
+    this.recurringGivingEnabled = true,
     this.funds = const [GivingFund(id: 7, name: 'General fund')],
     this.campaignFormFields = const [],
     this.statusStates = const [GivingPaymentState.succeeded],
     this.abandonThrows = false,
     this.subscriptions = const [],
     this.checkoutProvider,
+    this.statusProvider,
+    this.statusDonationId,
+    this.configReady,
   }) : assert(statusStates.isNotEmpty);
 
   final String? campaignDescription;
@@ -1028,12 +1166,17 @@ final class _FakeGivingApi implements GivingApi {
   final String? defaultProvider;
   final List<String> availableProviders;
   final bool coverFeesEnabled;
+  final bool recurringGivingEnabled;
   final List<GivingFund> funds;
   final List<GivingCampaignFormField> campaignFormFields;
   final List<GivingPaymentState> statusStates;
   final bool abandonThrows;
   final List<GivingSubscription> subscriptions;
   final String? checkoutProvider;
+  final String? statusProvider;
+  final int? statusDonationId;
+  final Completer<void>? configReady;
+  int fundsCalls = 0;
   GeneralGivingRequest? generalRequest;
   CampaignGivingRequest? campaignRequest;
   int? campaignId;
@@ -1120,19 +1263,26 @@ final class _FakeGivingApi implements GivingApi {
   );
 
   @override
-  Future<GivingConfig> getConfig() async => GivingConfig(
-    defaultPaymentProvider: defaultProvider,
-    availableProviders: availableProviders,
-    defaultCurrency: 'USD',
-    supportedCurrencies: const [
-      SupportedCurrency(code: 'USD', name: 'US Dollar', symbol: r'$'),
-    ],
-    coverFeesEnabled: coverFeesEnabled,
-    coverFeesPercentage: coverFeesEnabled ? 2.5 : null,
-  );
+  Future<GivingConfig> getConfig() async {
+    await configReady?.future;
+    return GivingConfig(
+      defaultPaymentProvider: defaultProvider,
+      availableProviders: availableProviders,
+      defaultCurrency: 'USD',
+      supportedCurrencies: const [
+        SupportedCurrency(code: 'USD', name: 'US Dollar', symbol: r'$'),
+      ],
+      coverFeesEnabled: coverFeesEnabled,
+      recurringGivingEnabled: recurringGivingEnabled,
+      coverFeesPercentage: coverFeesEnabled ? 2.5 : null,
+    );
+  }
 
   @override
-  Future<List<GivingFund>> getFunds() async => funds;
+  Future<List<GivingFund>> getFunds() async {
+    fundsCalls++;
+    return funds;
+  }
 
   @override
   Future<List<GivingSubscription>> getSubscriptions() async => subscriptions;
@@ -1148,9 +1298,10 @@ final class _FakeGivingApi implements GivingApi {
         : statusStates.length - 1;
     statusCalls++;
     return GivingPaymentStatus(
-      donationId: donationId,
+      donationId: statusDonationId ?? donationId,
       state: statusStates[index],
-      provider: 'testpay',
+      provider:
+          statusProvider ?? checkoutProvider ?? defaultProvider ?? 'testpay',
     );
   }
 

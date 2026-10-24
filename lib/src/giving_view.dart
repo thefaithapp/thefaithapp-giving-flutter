@@ -123,22 +123,23 @@ final class _GivingViewState extends State<GivingView> {
 
   Future<void> _load() async {
     try {
-      final config = await widget.giving.getConfig();
-      final List<GivingFund> funds;
-      final GivingCampaign? campaign;
-      switch (widget.target) {
-        case GeneralGivingTarget():
-          funds = await widget.giving.getFunds();
-          campaign = null;
-        case CampaignGivingTarget(:final campaignId):
-          funds = const [];
-          campaign = await widget.giving.getCampaign(campaignId);
-          if (!campaign.acceptsCash) {
-            throw const GivingException(
-              GivingErrorCode.unavailable,
-              'This campaign does not accept cash gifts.',
-            );
-          }
+      final (config, funds, campaign) = await (
+        widget.giving.getConfig(),
+        widget.target is GeneralGivingTarget
+            ? widget.giving.getFunds()
+            : Future.value(const <GivingFund>[]),
+        switch (widget.target) {
+          CampaignGivingTarget(:final campaignId) => widget.giving.getCampaign(
+            campaignId,
+          ),
+          GeneralGivingTarget() => Future<GivingCampaign?>.value(),
+        },
+      ).wait;
+      if (campaign != null && !campaign.acceptsCash) {
+        throw const GivingException(
+          GivingErrorCode.unavailable,
+          'This campaign does not accept cash gifts.',
+        );
       }
       if (!mounted) return;
       setState(() {
@@ -185,7 +186,10 @@ final class _GivingViewState extends State<GivingView> {
                   )
                   .toList(growable: false),
               currency: currency,
-              frequency: widget.prayerRoomId == null
+              frequency:
+                  widget.allowRecurring &&
+                      widget.prayerRoomId == null &&
+                      config.recurringGivingEnabled
                   ? _frequency
                   : GivingFrequency.oneTime,
               memo: _memoController.text,
@@ -200,7 +204,9 @@ final class _GivingViewState extends State<GivingView> {
             CampaignGivingRequest(
               amount: _parseAmount(_allocations.first.amount.text)!,
               currency: currency,
-              frequency: _frequency,
+              frequency: widget.allowRecurring && config.recurringGivingEnabled
+                  ? _frequency
+                  : GivingFrequency.oneTime,
               memo: _memoController.text,
               coverFees: _coverFees,
               formFields: _campaignFormValues(),
@@ -292,21 +298,28 @@ final class _GivingViewState extends State<GivingView> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _currency,
+              isExpanded: true,
               decoration: InputDecoration(labelText: widget.strings.currency),
               items: config.supportedCurrencies
                   .map(
                     (currency) => DropdownMenuItem(
                       value: currency.code,
-                      child: Text('${currency.code} — ${currency.name}'),
+                      child: Text(
+                        '${currency.code} — ${currency.name}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   )
                   .toList(growable: false),
               onChanged: (value) => setState(() => _currency = value),
             ),
-            if (widget.allowRecurring && widget.prayerRoomId == null) ...[
+            if (widget.allowRecurring &&
+                widget.prayerRoomId == null &&
+                config.recurringGivingEnabled) ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<GivingFrequency>(
                 initialValue: _frequency,
+                isExpanded: true,
                 decoration: InputDecoration(
                   labelText: widget.strings.frequency,
                 ),
@@ -314,7 +327,10 @@ final class _GivingViewState extends State<GivingView> {
                     .map(
                       (frequency) => DropdownMenuItem(
                         value: frequency,
-                        child: Text(frequency.label),
+                        child: Text(
+                          frequency.label,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     )
                     .toList(growable: false),
@@ -386,6 +402,7 @@ final class _GivingViewState extends State<GivingView> {
             Expanded(
               child: DropdownButtonFormField<int>(
                 initialValue: allocation.fundId ?? 0,
+                isExpanded: true,
                 decoration: InputDecoration(labelText: widget.strings.fund),
                 items: [
                   const DropdownMenuItem<int>(value: 0, child: Text('General')),

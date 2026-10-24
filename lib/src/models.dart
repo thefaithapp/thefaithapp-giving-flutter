@@ -58,6 +58,7 @@ final class GivingConfig {
     required this.supportedCurrencies,
     required this.coverFeesEnabled,
     this.coverFeesPercentage,
+    this.recurringGivingEnabled = false,
   });
 
   factory GivingConfig.fromJson(Map<String, dynamic> json) {
@@ -76,6 +77,7 @@ final class GivingConfig {
           : currencies,
       coverFeesEnabled: json['cover_fees_enabled'] == true,
       coverFeesPercentage: _nullableDouble(json['cover_fees_percentage']),
+      recurringGivingEnabled: json['recurring_giving_enabled'] == true,
     );
   }
 
@@ -85,6 +87,7 @@ final class GivingConfig {
   final List<SupportedCurrency> supportedCurrencies;
   final bool coverFeesEnabled;
   final double? coverFeesPercentage;
+  final bool recurringGivingEnabled;
 
   /// The platform intentionally returns only the church's active/default method.
   String? get activeProvider =>
