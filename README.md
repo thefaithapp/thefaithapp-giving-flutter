@@ -19,7 +19,7 @@ payment method to be added without duplicating the general and campaign forms.
 ```yaml
 dependencies:
   thefaithapp_auth: ^0.1.0
-  thefaithapp_giving: ^0.2.0
+  thefaithapp_giving: ^0.2.1
 ```
 
 Follow the native setup required by `flutter_stripe` and
@@ -92,7 +92,7 @@ When updating to this change, add the new cases to exhaustive
 
 ## Upgrading from 0.1.0
 
-Update the giving constraint to `^0.2.0`; the auth dependency stays on
+Update the giving constraint to `^0.2.1`; the auth dependency stays on
 `^0.1.0`. A decoded API error with HTTP 403 was previously reported as `notAuthenticated`. In 0.2.0,
 recognized plan denials are `planAccessDenied` and other decoded HTTP 403 errors are
 `forbidden`. Add both cases to exhaustive switches, and keep sign-in recovery
