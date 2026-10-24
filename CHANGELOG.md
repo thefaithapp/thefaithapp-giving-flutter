@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 - 2026-10-24
 
 - Show recurring choices only when the server enables them; otherwise submit one-time gifts.
 - Reject payment status responses for a different donation or provider.
