@@ -14,6 +14,12 @@ The package currently includes handlers for:
 The shared checkout engine and `GivingPaymentHandler` interface allow another
 payment method to be added without duplicating the general and campaign forms.
 
+## Documentation
+
+- [Flutter Giving SDK guide](https://docs.thefaithapp.com/api-reference/flutter-giving-sdk)
+- [Flutter authentication quickstart](https://docs.thefaithapp.com/api-reference/flutter-sdk)
+- [Standalone example app](https://github.com/thefaithapp/thefaithapp-giving-flutter/tree/main/example)
+
 ## Install
 
 ```yaml
