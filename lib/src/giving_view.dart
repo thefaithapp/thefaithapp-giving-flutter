@@ -189,7 +189,8 @@ final class _GivingViewState extends State<GivingView> {
               frequency:
                   widget.allowRecurring &&
                       widget.prayerRoomId == null &&
-                      config.recurringGivingEnabled
+                      config.recurringGivingEnabled &&
+                      config.activeProvider != 'fapshi'
                   ? _frequency
                   : GivingFrequency.oneTime,
               memo: _memoController.text,
@@ -204,7 +205,10 @@ final class _GivingViewState extends State<GivingView> {
             CampaignGivingRequest(
               amount: _parseAmount(_allocations.first.amount.text)!,
               currency: currency,
-              frequency: widget.allowRecurring && config.recurringGivingEnabled
+              frequency:
+                  widget.allowRecurring &&
+                      config.recurringGivingEnabled &&
+                      config.activeProvider != 'fapshi'
                   ? _frequency
                   : GivingFrequency.oneTime,
               memo: _memoController.text,
@@ -315,7 +319,8 @@ final class _GivingViewState extends State<GivingView> {
             ),
             if (widget.allowRecurring &&
                 widget.prayerRoomId == null &&
-                config.recurringGivingEnabled) ...[
+                config.recurringGivingEnabled &&
+                config.activeProvider != 'fapshi') ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<GivingFrequency>(
                 initialValue: _frequency,

@@ -115,6 +115,52 @@ final class FlutterwaveGivingPaymentHandler implements GivingPaymentHandler {
   }
 }
 
+/// Presents the church's Fapshi checkout without exposing merchant credentials.
+final class FapshiGivingPaymentHandler implements GivingPaymentHandler {
+  const FapshiGivingPaymentHandler();
+
+  @override
+  String get provider => 'fapshi';
+
+  @override
+  Future<GivingPaymentResult> present(
+    BuildContext context,
+    GivingCheckoutContext checkout,
+  ) async {
+    final approvalUrl = checkout.session.approvalUrl;
+    if (approvalUrl == null || approvalUrl.scheme != 'https') {
+      throw const GivingException(
+        GivingErrorCode.malformedResponse,
+        'Fapshi checkout URL is unavailable.',
+      );
+    }
+    final callbackPath = checkout.target is CampaignGivingTarget
+        ? '/fapshi/campaigns/callback'
+        : '/fapshi/giving/callback';
+    final state = await Navigator.of(context).push<GivingPaymentState>(
+      MaterialPageRoute(
+        builder: (_) => _HostedGivingPage(
+          title: 'Fapshi',
+          approvalUrl: approvalUrl,
+          apiOrigin: checkout.apiOrigin,
+          donationId: checkout.session.donationId,
+          successPaths: {callbackPath},
+          cancelPaths: const <String>{},
+          // Redirect parameters are advisory. The authenticated API checks
+          // Fapshi using the church's own service and stored transaction ID.
+          onApproved: (_) async =>
+              (await checkout.waitForAuthoritativeStatus()).state,
+        ),
+      ),
+    );
+    return GivingPaymentResult(
+      donationId: checkout.session.donationId,
+      provider: provider,
+      state: state ?? GivingPaymentState.cancelled,
+    );
+  }
+}
+
 typedef _HostedApproval = Future<GivingPaymentState> Function(Uri callback);
 
 final class _HostedGivingPage extends StatefulWidget {

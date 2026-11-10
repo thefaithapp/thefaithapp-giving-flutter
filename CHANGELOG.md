@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add Fapshi hosted checkout for one-time general and campaign gifts in whole XAF amounts of at least 100 XAF.
+- Confirm Fapshi redirects through the authenticated checkout status and keep pending gifts distinct from confirmed gifts.
+
 ## 0.2.1 - 2026-10-24
 
 - Show recurring choices only when the server enables them; otherwise submit one-time gifts.

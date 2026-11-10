@@ -9,6 +9,178 @@ import 'package:thefaithapp_giving/src/payment/stripe_payment_handler.dart';
 import 'package:thefaithapp_giving/thefaithapp_giving.dart';
 
 void main() {
+  testWidgets('Fapshi dismissal preserves an already confirmed gift', (
+    tester,
+  ) async {
+    final api = _FakeGivingApi(
+      defaultProvider: 'fapshi',
+      availableProviders: const ['fapshi'],
+    );
+    final giving = TheFaithAppGiving.testing(
+      api: api,
+      paymentHandlers: const [
+        _FixedResultPaymentHandler('fapshi', GivingPaymentState.cancelled),
+      ],
+    );
+    final context = await _pumpContext(tester);
+    final result = await giving.give(
+      context,
+      const GeneralGivingRequest(
+        allocations: [GivingAllocation(amount: 1000)],
+        currency: 'XAF',
+      ),
+    );
+    expect(result.state, GivingPaymentState.succeeded);
+    expect(api.abandonCalls, 0);
+  });
+
+  for (final campaign in [false, true]) {
+    testWidgets(
+      'Fapshi is registered without a custom handler: campaign=$campaign',
+      (tester) async {
+        final api = _FakeGivingApi(
+          defaultProvider: 'fapshi',
+          availableProviders: const ['fapshi'],
+        );
+        final giving = TheFaithAppGiving.testing(api: api);
+        final context = await _pumpContext(tester);
+        final result = campaign
+            ? giving.giveToCampaign(
+                context,
+                42,
+                const CampaignGivingRequest(amount: 1000, currency: 'XAF'),
+              )
+            : giving.give(
+                context,
+                const GeneralGivingRequest(
+                  allocations: [GivingAllocation(amount: 1000)],
+                  currency: 'XAF',
+                ),
+              );
+        // The fake API deliberately supplies no approval URL. Reaching the
+        // hosted handler proves a supported provider without invoking WebView.
+        await expectLater(
+          result,
+          throwsA(
+            isA<GivingException>().having(
+              (error) => error.code,
+              'code',
+              GivingErrorCode.malformedResponse,
+            ),
+          ),
+        );
+        expect(
+          campaign ? api.campaignCheckoutCalls : api.generalCheckoutCalls,
+          1,
+        );
+      },
+    );
+
+    testWidgets(
+      'Fapshi hides recurring choices even with a stale enabled flag: campaign=$campaign',
+      (tester) async {
+        final giving = TheFaithAppGiving.testing(
+          api: _FakeGivingApi(
+            defaultProvider: 'fapshi',
+            availableProviders: const ['fapshi'],
+          ),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: campaign
+                  ? GivingView.campaign(giving: giving, campaignId: 42)
+                  : GivingView.general(giving: giving),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Frequency'), findsNothing);
+      },
+    );
+  }
+
+  for (final invalid in [
+    (amount: 99.0, currency: 'XAF', frequency: GivingFrequency.oneTime),
+    (amount: 100.5, currency: 'XAF', frequency: GivingFrequency.oneTime),
+    (amount: 1000.0, currency: 'USD', frequency: GivingFrequency.oneTime),
+    (amount: 1000.0, currency: 'XAF', frequency: GivingFrequency.monthly),
+  ]) {
+    testWidgets(
+      'Fapshi rejects unsupported requests before creating donations: $invalid',
+      (tester) async {
+        final api = _FakeGivingApi(
+          defaultProvider: 'fapshi',
+          availableProviders: const ['fapshi'],
+        );
+        final giving = TheFaithAppGiving.testing(api: api);
+        final context = await _pumpContext(tester);
+        final invalidRequest = throwsA(
+          isA<GivingException>().having(
+            (error) => error.code,
+            'code',
+            GivingErrorCode.invalidRequest,
+          ),
+        );
+        await expectLater(
+          giving.give(
+            context,
+            GeneralGivingRequest(
+              allocations: [GivingAllocation(amount: invalid.amount)],
+              currency: invalid.currency,
+              frequency: invalid.frequency,
+            ),
+          ),
+          invalidRequest,
+        );
+        await expectLater(
+          giving.giveToCampaign(
+            context,
+            42,
+            CampaignGivingRequest(
+              amount: invalid.amount,
+              currency: invalid.currency,
+              frequency: invalid.frequency,
+            ),
+          ),
+          invalidRequest,
+        );
+        expect(api.generalCheckoutCalls, 0);
+        expect(api.campaignCheckoutCalls, 0);
+      },
+    );
+  }
+
+  test('Fapshi callbacks bind the exact origin, route and donation', () {
+    for (final path in [
+      '/fapshi/giving/callback',
+      '/fapshi/campaigns/callback',
+    ]) {
+      final origin = Uri.parse('https://api.thefaithapp.com');
+      expect(
+        isTrustedGivingCallback(
+          Uri.parse('${origin.origin}$path?donation_id=9'),
+          origin,
+          9,
+          {path},
+        ),
+        isTrue,
+      );
+      for (final candidate in [
+        'https://evil.example$path?donation_id=9',
+        '${origin.origin}$path?donation_id=10',
+        '${origin.origin}$path/extra?donation_id=9',
+        '${origin.origin}:8443$path?donation_id=9',
+      ]) {
+        expect(
+          isTrustedGivingCallback(Uri.parse(candidate), origin, 9, {path}),
+          isFalse,
+          reason: candidate,
+        );
+      }
+    }
+  });
+
   for (final permission in [null, false, true, 'true', 1]) {
     test(
       'recurring giving requires explicit server permission: $permission',

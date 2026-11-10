@@ -10,6 +10,7 @@ The package currently includes handlers for:
 - Stripe PaymentSheet
 - PayPal hosted checkout
 - Flutterwave hosted checkout
+- Fapshi hosted checkout (development source; not included in the published 0.2.1 release)
 
 The shared checkout engine and `GivingPaymentHandler` interface allow another
 payment method to be added without duplicating the general and campaign forms.
@@ -168,6 +169,10 @@ so the platform owns method selection and configuration.
 
 The built-in forms show recurring choices only when the API configuration
 explicitly enables recurring giving. Otherwise, they submit one-time gifts.
+Fapshi always uses one-time gifts in XAF, with whole-franc amounts totalling
+at least 100 XAF. Merchant API keys and webhook secrets stay on the platform;
+the SDK only receives an ephemeral checkout URL. Returning from Fapshi starts
+an authenticated payment-status check and does not itself confirm a gift.
 
 ## Manage recurring gifts
 

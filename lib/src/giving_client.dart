@@ -63,6 +63,7 @@ final class TheFaithAppGiving {
       StripeGivingPaymentHandler(),
       PayPalGivingPaymentHandler(),
       FlutterwaveGivingPaymentHandler(),
+      FapshiGivingPaymentHandler(),
     ]) {
       _registerHandler(handler);
     }
@@ -92,6 +93,12 @@ final class TheFaithAppGiving {
     _validateGeneralRequest(request);
     const target = GivingTarget.general();
     final provider = await _activeProvider();
+    _validateProviderRequest(
+      provider,
+      request.currency,
+      request.frequency,
+      request.allocations.map((item) => item.amount),
+    );
     final session = await _api.checkoutGeneral(request, provider);
     await _validateCheckoutSession(target, provider, session);
     if (!context.mounted) {
@@ -118,6 +125,9 @@ final class TheFaithAppGiving {
     }
     final target = GivingTarget.campaign(campaignId);
     final provider = await _activeProvider();
+    _validateProviderRequest(provider, request.currency, request.frequency, [
+      request.amount,
+    ]);
     final session = await _api.checkoutCampaign(campaignId, request, provider);
     await _validateCheckoutSession(target, provider, session);
     if (!context.mounted) {
@@ -162,7 +172,7 @@ final class TheFaithAppGiving {
       );
     }
     try {
-      final result = await handler.present(
+      var result = await handler.present(
         context,
         GivingCheckoutContext(
           session: session,
@@ -181,6 +191,21 @@ final class TheFaithAppGiving {
           GivingErrorCode.malformedResponse,
           'The payment handler returned a result for a different checkout.',
         );
+      }
+      if (session.provider == 'fapshi' &&
+          result.state == GivingPaymentState.cancelled) {
+        try {
+          final status = await _getStatus(target, session);
+          if (status.state != GivingPaymentState.pending) {
+            result = GivingPaymentResult(
+              donationId: session.donationId,
+              provider: session.provider,
+              state: status.state,
+            );
+          }
+        } on Object {
+          // A local dismissal is advisory when status cannot be refreshed.
+        }
       }
       if (result.state == GivingPaymentState.cancelled ||
           (result.state == GivingPaymentState.failed &&
@@ -280,6 +305,27 @@ final class TheFaithAppGiving {
       throw const GivingException(
         GivingErrorCode.invalidRequest,
         'Each fund can only be selected once.',
+      );
+    }
+  }
+
+  void _validateProviderRequest(
+    String provider,
+    String currency,
+    GivingFrequency frequency,
+    Iterable<double> amounts,
+  ) {
+    if (provider != 'fapshi') return;
+    final values = amounts.toList(growable: false);
+    if (currency.toUpperCase() != 'XAF' ||
+        frequency != GivingFrequency.oneTime ||
+        values.any(
+          (amount) => !amount.isFinite || amount != amount.truncateToDouble(),
+        ) ||
+        values.fold<double>(0, (total, amount) => total + amount) < 100) {
+      throw const GivingException(
+        GivingErrorCode.invalidRequest,
+        'Fapshi supports one-time gifts of at least 100 XAF in whole francs.',
       );
     }
   }
